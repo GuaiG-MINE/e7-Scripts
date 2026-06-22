@@ -35,7 +35,7 @@ def main():
     # 游戏主循环
     while True:
         # 场景 1：如果看到“开始游戏”按钮
-        if click_target('start_btn.png', threshold=0.85):
+        if click_target('data/images/win_start.png', threshold=0.85):
             time.sleep(2) # 点击后等待2秒，防止游戏响应慢导致重复点击
             continue      # 直接进入下一轮检测
             
