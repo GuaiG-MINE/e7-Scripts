@@ -1,0 +1,17 @@
+# 虚拟环境
+venv/
+env/
+
+# Python 缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 环境变量及本地配置
+.env
+.vscode/
+.idea/
+
+# 忽略测试图片（可选，如果你想把截图传上Git，这行可以删掉）
+# data/images/
