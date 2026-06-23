@@ -1,3 +1,8 @@
+
+<div align="right">
+  <strong>简体中文</strong> | <a href="./README_EN.md">English</a>
+</div>
+
 # 🚀 E7 全自动挂机助手 (Epic Seven Auto Script)
 
 基于 Python + pyautogui + CustomTkinter 打造的《第七史诗》桌面端自动化辅助工具。

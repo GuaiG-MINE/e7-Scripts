@@ -7,7 +7,6 @@
 @Desc    : Windows 桌面应用基础界面 (CustomTkinter)
 """
 
-import os
 import threading
 import customtkinter as ctk
 import pyautogui
