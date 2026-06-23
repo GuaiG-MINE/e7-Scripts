@@ -35,10 +35,10 @@ SPEED_PROFILES = {
         # 🚀 极限狂飙：贴合游戏物理动画极限，一秒都不多等
         'global_pause': 0.02,     'click_move': 0.0,
         'wait_popup': 0.4,        'wait_buy_done': 0.4,
-        'wait_cancel': 0.3,       'swipe_drag': 0.15,
+        'wait_cancel': 0.3,       'swipe_drag': 0.2,
         'wait_after_swipe': 0.8,  # 极限抗击滑动惯性
-        'wait_refresh_pop': 0.5,  # 极限贴合视频弹窗弹出耗时
-        'wait_refresh_done': 1.0, # 极限贴合视频商品滑出耗时
+        'wait_refresh_pop': 0.5,  # 极限贴合弹窗弹出耗时
+        'wait_refresh_done': 1.0, # 极限贴合商品滑出耗时
         'loop_interval': 0.2
     }
 }

@@ -53,17 +53,19 @@ class WinController:
         pyautogui.click(x, y, duration=self.speed['click_move'])
 
     def swipe_up(self):
-        """鼠标拖拽模拟向上滑动屏幕接口 (🌟 动态视觉锚点版)"""
+        """鼠标拖拽模拟向上滑动屏幕接口 (🌟 宽屏适配 & 大幅度滑动版)"""
         # 寻找商店界面固定存在的“刷新按钮”作为坐标系原点
         anchor = self.find_image('refresh_btn.png', conf=0.75)
         
         if anchor:
-            # 在刷新按钮右上方的一块安全区域进行滑动，确保一定划在游戏窗口内
-            start_x = anchor.x + 300
-            start_y = anchor.y - 150
+            # 🌟 1. 宽屏修正：X轴往右偏移 700，确保鼠标落在右侧的可滑动商品列表内 后续添加不同尺寸大小适配
+            start_x = anchor.x + 700
+            # 🌟 2. Y轴起点修正：从 -150 改为 -50（稍微往下挪一点），给向上滑动留出更长的“跑道”
+            start_y = anchor.y - 50
             
             pyautogui.moveTo(start_x, start_y)
-            pyautogui.dragTo(start_x, start_y - 250, duration=self.speed['swipe_drag'], button='left')
+            # 🌟 3. 滑动幅度修正：将向上滑动的距离从 250 加大到 400
+            pyautogui.dragTo(start_x, start_y - 400, duration=self.speed['swipe_drag'], button='left')
             time.sleep(self.speed['wait_after_swipe'])
             return True
         else:
