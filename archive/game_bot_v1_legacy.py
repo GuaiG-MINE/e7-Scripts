@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@File    : game_logic_legacy.py
+@Author  : Guaig
+@Date    : 2026-06-23
+@Desc    : 远古遗物，最初版本的 Windows 平台控制器，基于 pyautogui 实现鼠标点击、滑动与图像识别
+"""
 import pyautogui
 import time
 import os
@@ -47,7 +55,7 @@ pyautogui.FAILSAFE = True
 pyautogui.PAUSE = SPEED_CONFIG['global_pause']
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'images')
+IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'images_win')  # 更换目录 images_win
 stats = {'blue': 0, 'red': 0}
 
 def get_img_path(img_name):

@@ -15,3 +15,12 @@ __pycache__/
 
 # 忽略测试图片（可选，如果你想把截图传上Git，这行可以删掉）
 # data/images/
+
+# PyInstaller 打包生成的文件
+build/
+dist/
+*.spec
+*.exe
+
+# 运行日志（可选，如果你以后在代码里加了保存 log 的功能）
+*.log
