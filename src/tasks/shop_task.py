@@ -94,8 +94,16 @@ class ShopTask(BaseTask):
                 
             # 2️⃣ 判断是否需要滑动
             if not (blue_bought and red_bought):
-                self.device.swipe_up()
+                # ✅ 接收滑动结果
+                swipe_success = self.device.swipe_up()
                 if not self._running: break  # 🛑 滑动后检查
+                
+                # ✅ 如果滑动失败（没找到锚点），则警告并重试
+                if not swipe_success:
+                    print("⚠️ 警告：找不到刷新按钮锚点！可能不在商店界面或画面被遮挡。")
+                    print("⏳ 暂停 3 秒后重试...")
+                    time.sleep(3)
+                    continue  # 跳过后续步骤，直接进入下一轮循环重新识别
                 
                 # 3️⃣ 下半区搜寻
                 if not blue_bought and self.find_and_buy('icon_blue.png'):
@@ -106,7 +114,7 @@ class ShopTask(BaseTask):
             else:
                 print("🎉 天胡开局！上半区已全收，直接刷新！")
                 
-            print(f"🏆 战绩: 蓝票 {self.stats['blue']} | 红票 {self.stats['red']}")
+            print(f"🏆 战绩: 书签 {self.stats['blue']} | 神秘 {self.stats['red']}")
             
             if not self._running: break  # 🛑 刷新前检查
             

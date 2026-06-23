@@ -38,13 +38,22 @@ class WinController:
         pyautogui.click(x, y, duration=self.speed['click_move'])
 
     def swipe_up(self):
-        """鼠标拖拽模拟向上滑动屏幕接口"""
-        screen_w, screen_h = pyautogui.size()
-        cx, cy = screen_w // 2, screen_h // 2
+        """鼠标拖拽模拟向上滑动屏幕接口 (🌟 动态视觉锚点版)"""
+        # 寻找商店界面固定存在的“刷新按钮”作为坐标系原点
+        anchor = self.find_image('refresh_btn.png', conf=0.75)
         
-        pyautogui.moveTo(cx, cy + 200)
-        pyautogui.dragTo(cx, cy - 250, duration=self.speed['swipe_drag'], button='left')
-        time.sleep(self.speed['wait_after_swipe'])
+        if anchor:
+            # 在刷新按钮右上方的一块安全区域进行滑动，确保一定划在游戏窗口内
+            start_x = anchor.x + 300
+            start_y = anchor.y - 150
+            
+            pyautogui.moveTo(start_x, start_y)
+            pyautogui.dragTo(start_x, start_y - 250, duration=self.speed['swipe_drag'], button='left')
+            time.sleep(self.speed['wait_after_swipe'])
+            return True
+        else:
+            # ❌ 没找到锚点，说明可能不在商店界面或画面被遮挡，拒绝盲目滑动
+            return False
         
     def get_screen_size(self):
         """获取屏幕分辨率"""
