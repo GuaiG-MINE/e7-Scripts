@@ -4,17 +4,24 @@
 @File    : main.py
 @Author  : Guaig
 @Date    : 2026-06-23
-@Desc    : 脚本总入口，负责加载配置、初始化设备控制器并启动对应任务 (未来的App主页雏形)
+@Desc    : 脚本总入口，支持 GUI (默认) 和 CLI 命令行双模式
 """
 
 import os
-from src.core.config import SPEED_PROFILES, CURRENT_GEAR
-from src.core.win_controller import WinController
-from src.tasks.shop_task import ShopTask
+import sys
 
-def main():
+# 确保项目根目录在 Python 模块搜索路径中
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
+
+def run_cli_mode():
+    """原本的纯文本命令行模式"""
+    from src.core.config import SPEED_PROFILES, CURRENT_GEAR
+    from src.core.win_controller import WinController
+    from src.tasks.shop_task import ShopTask
+
     print("=============================")
-    print("🚀 欢迎使用 E7 全自动挂机助手")
+    print("🚀 欢迎使用 E7 全自动挂机助手 (CLI模式)")
     print("=============================")
     print("1. 自动刷秘密商店")
     print("2. 自动讨伐 (敬请期待)")
@@ -24,21 +31,37 @@ def main():
     if choice == '' or choice == '1':
         print(f"\n>>> 初始化配置中... 当前挡位：【{CURRENT_GEAR}】")
         
-        # 1. 确定工作目录和配置
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'images_win')
         SPEED_CONFIG = SPEED_PROFILES[CURRENT_GEAR]
         
-        # 2. 实例化手脚 (装配 Windows 鼠标键盘控制器)
+        # 实例化手脚和大脑
         device = WinController(SPEED_CONFIG, IMAGE_DIR)
-        
-        # 3. 实例化大脑 (装载 刷商店 逻辑，并把控制器交接给它)
         task = ShopTask(device, SPEED_CONFIG)
         
-        # 4. 开始干活！
+        # 开始干活！
         task.run()
     else:
         print("敬请期待！")
+
+def run_gui_mode():
+    """全新的图形化界面模式"""
+    print("正在启动 E7 挂机助手图形界面...")
+    try:
+        from src.ui.desktop_app.desktop_ui import E7DesktopApp
+        app = E7DesktopApp()
+        app.mainloop()
+    except ImportError as e:
+        print(f"❌ 启动失败，缺少依赖库或路径错误: {e}")
+        print("💡 请确认已激活虚拟环境，并执行: pip install -r requirements.txt")
+        print("💡 临时回退到命令行模式，请运行: python main.py --cli")
+
+def main():
+    # 如果运行命令带了 --cli 参数，就走老逻辑
+    if len(sys.argv) > 1 and sys.argv[1] == '--cli':
+        run_cli_mode()
+    else:
+        # 默认启动图形界面
+        run_gui_mode()
 
 if __name__ == "__main__":
     main()
