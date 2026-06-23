@@ -4,6 +4,8 @@
 
 # 1. 桌面自动化核心 (鼠标键盘控制与基础屏幕截取)
 pyautogui
+pyscreeze      # 显式声明，防止 Python 3.14 漏装底层依赖
+Pillow         # 显式声明，防止 Python 3.14 漏装底层依赖
 
 # 2. 图像识别与矩阵运算 (用于高精度找图与 confidence 参数)
 numpy

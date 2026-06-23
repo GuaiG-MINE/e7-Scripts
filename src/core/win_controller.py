@@ -10,6 +10,7 @@
 import pyautogui
 import time
 import os
+from pathlib import Path
 
 class WinController:
     def __init__(self, speed_config, image_dir):
@@ -23,14 +24,20 @@ class WinController:
 
     def find_image(self, img_name, conf=0.85, region=None):
         """🛡️ 安全查找图片接口"""
-        img_path = os.path.join(self.image_dir, img_name)
+        img_path = str(Path(self.image_dir) / img_name)
         if not os.path.exists(img_path): 
+            print(f"❌ 警告：图片文件不存在！路径为: {img_path}")
             return None
         try:
             if region: 
                 return pyautogui.locateCenterOnScreen(img_path, confidence=conf, region=region)
             return pyautogui.locateCenterOnScreen(img_path, confidence=conf)
-        except Exception: 
+        except pyautogui.ImageNotFoundException:
+            print(f"⚠️ 没找到图片: {img_path} (conf={conf})")
+            return None
+        except Exception as e: 
+            # 🌟 真正的异常，用 repr(e) 把错误类型带上，防止又是空字符串
+            print(f"❌ 崩溃啦！处理图片 {img_path} 时发生内部错误: {repr(e)}")
             return None
 
     def click(self, x, y):
@@ -53,6 +60,7 @@ class WinController:
             return True
         else:
             # ❌ 没找到锚点，说明可能不在商店界面或画面被遮挡，拒绝盲目滑动
+            print("⚠️ 警告：找不到刷新按钮锚点，无法滑动！请确认在商店界面并且画面无遮挡。")
             return False
         
     def get_screen_size(self):

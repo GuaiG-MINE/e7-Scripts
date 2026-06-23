@@ -8,10 +8,10 @@
 """
 
 import os
-import sys
 import threading
 import customtkinter as ctk
-import pyautogui 
+import pyautogui
+from pathlib import Path
 
 # 设置主题和样式
 ctk.set_appearance_mode("dark")      # 暗黑模式
@@ -135,8 +135,8 @@ class E7DesktopApp(ctk.CTk):
             # 获取配置和路径
             current_speed = SPEED_PROFILES[speed_gear]
             
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'images_win')
+            BASE_DIR = Path(__file__).resolve().parents[3]  # 回到项目根目录
+            IMAGE_DIR = str(BASE_DIR / 'data' / 'images_win')
             
             self.after(0, self._log, f"已加载挡位: {speed_gear}")
             

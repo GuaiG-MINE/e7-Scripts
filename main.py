@@ -7,12 +7,13 @@
 @Desc    : 脚本总入口，支持 GUI (默认) 和 CLI 命令行双模式
 """
 
-import os
 import sys
+from pathlib import Path
 
 # 确保项目根目录在 Python 模块搜索路径中
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE_DIR)
+# __file__ 是 main.py，.parent 直接就是项目根目录 (e7)
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))  # sys.path 需要字符串格式
 
 def run_cli_mode():
     """原本的纯文本命令行模式"""
@@ -31,7 +32,8 @@ def run_cli_mode():
     if choice == '' or choice == '1':
         print(f"\n>>> 初始化配置中... 当前挡位：【{CURRENT_GEAR}】")
         
-        IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'images_win')
+        # 🌟 优雅的路径拼接
+        IMAGE_DIR = str(BASE_DIR / 'data' / 'images_win')
         SPEED_CONFIG = SPEED_PROFILES[CURRENT_GEAR]
         
         # 实例化手脚和大脑
