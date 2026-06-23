@@ -10,13 +10,21 @@
 import pyautogui
 import time
 import os
+import sys
 from pathlib import Path
 
 class WinController:
     def __init__(self, speed_config, image_dir):
         self.speed = speed_config
-        self.image_dir = image_dir
         
+        # 🌟 核心修改：PyInstaller 路径拦截与兼容逻辑
+        if hasattr(sys, '_MEIPASS'):
+            # 如果是打包后的 exe 运行，强制将图片目录指向系统临时解压目录
+            self.image_dir = os.path.join(sys._MEIPASS, 'data', 'images_win')
+        else:
+            # 如果是平时在 VS Code 里开发运行，保持原样
+            self.image_dir = image_dir
+            
         # 开启防爆死机制：鼠标移到屏幕四角自动停止脚本
         pyautogui.FAILSAFE = True
         # 设置全局操作停顿时间
