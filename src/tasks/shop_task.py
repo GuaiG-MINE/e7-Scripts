@@ -26,7 +26,11 @@ class ShopTask(BaseTask):
             print(f"🎯 发现目标图标 [{item_name}]！正在寻找购买按钮...")
             
             screen_w, screen_h = self.device.get_screen_size()
-            search_region = (0, max(0, int(icon_center.y - 15)), screen_w, 100)
+            top_y = max(0, int(icon_center.y - 15))
+            left_x = int(icon_center.x)
+            safe_width = screen_w - left_x
+            safe_height = min(100, screen_h - top_y) 
+            search_region = (left_x, top_y, safe_width, safe_height)
 
             buy_center = self.device.find_image('buy_btn.png', conf=0.75, region=search_region)
             
