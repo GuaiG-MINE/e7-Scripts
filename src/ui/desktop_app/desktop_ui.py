@@ -11,6 +11,7 @@ import os
 import sys
 import threading
 import customtkinter as ctk
+import pyautogui 
 
 # 设置主题和样式
 ctk.set_appearance_mode("dark")      # 暗黑模式
@@ -36,6 +37,7 @@ class E7DesktopApp(ctk.CTk):
         # ==================== 状态变量 ====================
         self.is_running = False
         self.task_thread = None
+        self.current_task = None  # ✅ 新增：用来记录当前正在跑的任务，这样才能叫停它！
         
         # ==================== 创建组件 ====================
         self._create_widgets()
@@ -117,6 +119,10 @@ class E7DesktopApp(ctk.CTk):
         self._log(">>> 收到停止指令！(正在等待当前操作完成...)")
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
+        
+        # ✅ 新增：真正去按 ShopTask 的停止开关！
+        if self.current_task:
+            self.current_task.stop()
     
     def _run_game_task(self, speed_gear):
         """后台运行刷店逻辑"""
@@ -128,26 +134,32 @@ class E7DesktopApp(ctk.CTk):
             
             # 获取配置和路径
             current_speed = SPEED_PROFILES[speed_gear]
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'images_win')
             
-            self.after(0, lambda: self._log(f"已加载挡位: {speed_gear}"))
+            self.after(0, self._log, f"已加载挡位: {speed_gear}")
             
             # 初始化手脚和大脑
             device = WinController(current_speed, IMAGE_DIR)
-            task = ShopTask(device, current_speed)
             
-            # TODO: 后续我们需要把 task 里的 print 替换成传回 UI 的回调函数
-            # 目前先直接调用 run()
-            task.run()
+            # ✅ 修改：把实例化出来的任务赋值给 self.current_task，而不是局部的 task 变量
+            self.current_task = ShopTask(device, current_speed)
             
-            self.after(0, lambda: self._log("✅ 任务执行完毕或已手动停止。"))
+            # 执行任务
+            self.current_task.run()
             
+            self.after(0, self._log, "✅ 任务执行完毕或已手动停止。")
+            
+        except pyautogui.FailSafeException:
+            self.after(0, self._log, "🛑 已触发鼠标防爆死机制，任务已紧急停止！")
         except Exception as e:
-            self.after(0, lambda: self._log(f"❌ 发生异常: {str(e)}"))
+            error_msg = f"❌ 发生异常: {str(e)}"
+            self.after(0, self._log, error_msg)
         finally:
             # 恢复按钮状态
             self.is_running = False
+            self.current_task = None  # ✅ 新增：任务跑完了，把记录清空
             self.after(0, lambda: self.start_btn.configure(state="normal"))
             self.after(0, lambda: self.stop_btn.configure(state="disabled"))
     

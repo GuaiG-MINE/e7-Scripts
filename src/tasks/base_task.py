@@ -1,4 +1,4 @@
-# 基础任务#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 @File    : base_task.py
@@ -10,11 +10,16 @@
 class BaseTask:
     """
     所有具体任务（如 ShopTask, HuntTask）都必须继承此类。
-    这样可以保证主程序在调用时，不管是什么任务，都可以统一调用 run() 方法。
+    这样可以保证主程序在调用时，不管是什么任务，都可以统一调用 run() 和 stop() 方法。
     """
     def __init__(self, device, speed_config):
-        self.device = device  # 传入的控制器（WinController 或 AdbController）
-        self.speed = speed_config  # 传入的速度配置
+        self.device = device        # 传入的控制器（WinController 或 AdbController）
+        self.speed = speed_config   # 传入的速度配置
+        self._running = True        # ✅ 新增：控制任务运行状态的全局开关
+
+    def stop(self):
+        """✅ 新增：停止任务的统一接口，供 UI 调用"""
+        self._running = False
 
     def run(self):
         """执行任务的主入口，子类必须重写此方法"""
