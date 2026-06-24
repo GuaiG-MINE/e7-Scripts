@@ -211,17 +211,17 @@ class E7DesktopApp(ctk.CTk):
             
             current_speed = SPEED_PROFILES[speed_gear]
             BASE_DIR = Path(__file__).resolve().parents[3]
-            IMAGE_DIR = str(BASE_DIR / 'data' / 'images_win')  # 假设暂时共用同一套图
             
             self.after(0, self._log, f"已加载挡位: {speed_gear}")
             
-            # ✅ 根据用户选择的模式，实例化不同的控制器
+            # ✅ 根据用户选择的模式，动态分配图片路径并实例化不同的控制器
             if run_mode == _("mode_win"):  # 🌍
+                IMAGE_DIR = str(BASE_DIR / 'data' / 'images_win')
                 from src.core.win_controller import WinController
                 device = WinController(current_speed, IMAGE_DIR)
             else:
+                IMAGE_DIR = str(BASE_DIR / 'data' / 'images_adb')  # 🌟 指向 ADB 专属图片库
                 from src.core.adb_controller import AdbController
-                # 这里将 ADB 参数传进去
                 device = AdbController(serial=adb_serial, speed_profile=current_speed, image_dir=IMAGE_DIR)
             
             self.current_task = ShopTask(
