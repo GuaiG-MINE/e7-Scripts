@@ -34,7 +34,7 @@ class WinController:
         # 设置全局操作停顿时间
         pyautogui.PAUSE = self.speed['global_pause']
 
-    def find_image(self, img_name, conf=0.85, region=None):
+    def find_image(self, img_name, conf=0.8, region=None, use_cache=False):
         """🛡️ 安全查找图片接口 (带内存缓存优化)"""
         
         # 🌟 1. 如果缓存里没有，才去硬盘读

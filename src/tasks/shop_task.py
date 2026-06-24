@@ -11,33 +11,28 @@ import time
 from src.tasks.base_task import BaseTask
 
 class ShopTask(BaseTask):
-    # 🌟 构造函数新增 stats_callback 参数
     def __init__(self, device, speed_config, log_callback=None, stats_callback=None):
         super().__init__(device, speed_config)        
         self.stats = {'blue': 0, 'red': 0, 'refresh': 0}
         self.log_callback = log_callback
-        self.stats_callback = stats_callback  # 保存回调函数
+        self.stats_callback = stats_callback 
 
     def log(self, message, level="info"):
-        """
-        统一日志输出口：
-        - 终端(控制台)始终打印所有细节
-        - GUI 界面只显示 level="info" 或 "warning" 的关键信息
-        """
         print(message)  
         if self.log_callback and level != "debug":
             self.log_callback(message)
 
-    # 🌟 封装一个触发 UI 更新的方法
     def _notify_stats_update(self):
         if self.stats_callback:
             self.stats_callback(self.stats['blue'], self.stats['red'], self.stats['refresh'])
 
-    def find_and_buy(self, icon_img_name):
+    # 🌟 1. 新增 use_cache 参数
+    def find_and_buy(self, icon_img_name, use_cache=False):
         """【精准双重锁定版】左边认图标，右边认 1/1购买 -> 弹窗认全图"""
         if not self._running: return False
         
-        icon_center = self.device.find_image(icon_img_name, conf=0.8)
+        # 🌟 2. 找图标时，根据外部传入决定是否使用缓存
+        icon_center = self.device.find_image(icon_img_name, conf=0.8, use_cache=use_cache)
         
         if icon_center:
             item_name = "誓约书签(蓝)" if "blue" in icon_img_name else "神秘奖牌(红)"
@@ -61,14 +56,16 @@ class ShopTask(BaseTask):
             
             search_region = (left_x, top_y, safe_width, safe_height)
 
-            buy_center = self.device.find_image('buy_btn.png', conf=0.9, region=search_region)
+            # 🌟 3. 找购买按钮时，画面绝对没变，100% 使用缓存提速！
+            buy_center = self.device.find_image('buy_btn.png', conf=0.9, region=search_region, use_cache=True)
             
             if buy_center:
                 self.device.click(buy_center.x, buy_center.y)
                 time.sleep(self.speed['wait_popup'])  
                 
                 confirm_img = 'confirm_buy_blue.png' if "blue" in icon_img_name else 'confirm_buy_red.png'
-                confirm_center = self.device.find_image(confirm_img, conf=0.8)
+                # 🌟 4. 找确认弹窗时，画面弹出了新东西，绝对不能用缓存！
+                confirm_center = self.device.find_image(confirm_img, conf=0.8, use_cache=False)
                 
                 if confirm_center:
                     self.device.click(confirm_center.x, confirm_center.y)
@@ -87,17 +84,19 @@ class ShopTask(BaseTask):
         """刷新商店并确认"""
         if not self._running: return
         
-        refresh_center = self.device.find_image('refresh_btn.png', conf=0.85)
+        # 刷新按钮稳妥起见，不使用缓存，强制拍一张最新照片
+        refresh_center = self.device.find_image('refresh_btn.png', conf=0.85, use_cache=False)
         if refresh_center:
             self.device.click(refresh_center.x, refresh_center.y)
             time.sleep(self.speed['wait_refresh_pop'])
             
-            confirm_center = self.device.find_image('confirm_refresh_btn.png', conf=0.85)
+            # 弹窗必须不能用缓存
+            confirm_center = self.device.find_image('confirm_refresh_btn.png', conf=0.85, use_cache=False)
             if confirm_center:
                 self.device.click(confirm_center.x, confirm_center.y)
                 
                 self.stats['refresh'] += 1
-                self._notify_stats_update()  # 🌟 刷新次数增加，通知 UI
+                self._notify_stats_update()  
                 
                 time.sleep(self.speed['wait_refresh_done'])
 
@@ -108,7 +107,7 @@ class ShopTask(BaseTask):
             if not self._running: return
             time.sleep(1)
             
-        if not self.device.find_image('refresh_btn.png', conf=0.8):
+        if not self.device.find_image('refresh_btn.png', conf=0.8, use_cache=False):
             self.log("⚠️ 警告：未检测到商店界面！请确认画面无遮挡且停留在秘密商店。", level="warning")
             self.log("脚本将继续尝试运行，如果一直无反应请手动停止。", level="warning")
         else:
@@ -121,19 +120,26 @@ class ShopTask(BaseTask):
             blue_bought = False
             red_bought = False
             
-            if self.find_and_buy('icon_blue.png'):
+            # ================= 上半区 =================
+            # 1. 刚开始巡逻，必须拍一张新照片 (use_cache=False)
+            blue_bought_top = False
+            if self.find_and_buy('icon_blue.png', use_cache=False):
                 self.stats['blue'] += 1
                 blue_bought = True
-                self._notify_stats_update()  # 🌟 蓝书签增加，通知 UI
+                blue_bought_top = True
+                self._notify_stats_update()  
                 
-            if self.find_and_buy('icon_red.png'):
+            # 2. 如果上半区买了蓝书签，画面变了，不能用缓存；如果没买，直接白嫖刚才的照片！
+            use_cache_for_red_top = not blue_bought_top
+            if self.find_and_buy('icon_red.png', use_cache=use_cache_for_red_top):
                 self.stats['red'] += 1
                 red_bought = True
-                self._notify_stats_update()  # 🌟 红奖牌增加，通知 UI
+                self._notify_stats_update()  
                 
             if not self._running: break
                 
             if not (blue_bought and red_bought):
+                # ================= 滑动 =================
                 swipe_success = self.device.swipe_up()
                 if not self._running: break
                 
@@ -143,15 +149,28 @@ class ShopTask(BaseTask):
                     time.sleep(3)
                     continue
                 
-                if not blue_bought and self.find_and_buy('icon_blue.png'):
-                    self.stats['blue'] += 1
-                    blue_bought = True
-                    self._notify_stats_update()  # 🌟 蓝书签增加，通知 UI
+                # ================= 下半区 =================
+                blue_bought_bottom = False
+                first_check_bottom = True # 标记下半区是否已经拍过照片了
+                
+                if not blue_bought:
+                    # 3. 滑动后画面变了，必须拍新照片 (use_cache=False)
+                    if self.find_and_buy('icon_blue.png', use_cache=False):
+                        self.stats['blue'] += 1
+                        blue_bought = True
+                        blue_bought_bottom = True
+                        self._notify_stats_update()  
+                    first_check_bottom = False
                     
-                if not red_bought and self.find_and_buy('icon_red.png'):
-                    self.stats['red'] += 1
-                    red_bought = True
-                    self._notify_stats_update()  # 🌟 红奖牌增加，通知 UI
+                if not red_bought:
+                    # 4. 终极逻辑：
+                    # 如果 first_check_bottom 是 True，说明刚才没找蓝书签，现在必须拍新照片。
+                    # 如果 first_check_bottom 是 False，说明找过蓝书签了，只要没买(没弹窗)，就能白嫖照片！
+                    use_cache_for_red_bottom = (not first_check_bottom) and (not blue_bought_bottom)
+                    if self.find_and_buy('icon_red.png', use_cache=use_cache_for_red_bottom):
+                        self.stats['red'] += 1
+                        red_bought = True
+                        self._notify_stats_update()  
             else:
                 self.log("🎉 天胡开局！上半区已全收，直接刷新！")
                 

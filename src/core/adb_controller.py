@@ -25,6 +25,7 @@ class AdbController:
     def __init__(self, serial, speed_profile, image_dir):
         self.serial = serial
         self.speed = speed_profile
+        self._cached_screen = None
         
         # 1. 🌟 处理 PyInstaller 打包后的资源路径
         if getattr(sys, 'frozen', False):
@@ -128,21 +129,23 @@ class AdbController:
             print("⚠️ 警告：找不到刷新按钮锚点，无法滑动！请确认在商店界面并且画面无遮挡。")
             return False
 
-    def find_image(self, img_name, conf=0.8, region=None):
+    def find_image(self, img_name, conf=0.8, region=None, use_cache=False):
         """
         核心方法：截屏并使用 OpenCV 进行模板匹配
-        region 格式: (left_x, top_y, width, height)
+        🌟 新增 use_cache 参数：如果为 True，且有缓存，就不再重新截图
         """
-        # 1. 截取当前屏幕 (获取 PNG 格式的字节流)
-        screen_bytes = self._run_adb(['exec-out', 'screencap', '-p'], raw_output=True)
-        if not screen_bytes:
-            return None
-            
-        # 2. 将字节流转换为 OpenCV 图像矩阵
-        np_arr = np.frombuffer(screen_bytes, np.uint8)
-        screen_img = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
-        if screen_img is None:
-            return None
+        # 1. 如果不使用缓存，或者缓存为空，则重新执行耗时的截图
+        if not use_cache or self._cached_screen is None:
+            screen_bytes = self._run_adb(['exec-out', 'screencap', '-p'], raw_output=True)
+            if not screen_bytes:
+                return None
+            np_arr = np.frombuffer(screen_bytes, np.uint8)
+            self._cached_screen = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
+            if self._cached_screen is None:
+                return None
+
+        # 2. 🌟 核心：使用缓存的图像进行匹配
+        screen_img = self._cached_screen.copy()
 
         # 3. 如果指定了区域，则裁剪屏幕图像
         offset_x, offset_y = 0, 0
@@ -154,16 +157,16 @@ class AdbController:
         # 4. 获取模板图
         template = self._get_template(img_name)
         if template is None:
-            return None  # 找不到模板图直接返回 None，不崩溃
+            return None 
 
         th, tw = template.shape[:2]
-        sh, sw = screen_img.shape[:2] # 🌟 新增：获取当前截取区域的宽高
+        sh, sw = screen_img.shape[:2] 
 
-        # 🌟 新增 Log：看看底层的真实像素碰撞
+        # 🌟 日志稍微改一下，加上是否使用了缓存的提示
         if region:
-            print(f"🔍 [ADB 调试] 寻找 {img_name} -> 划定区域大小: 宽{sw}x高{sh}, 模板图片大小: 宽{tw}x高{th}")
+            cache_status = "⚡[缓存]" if use_cache else "📸[新截图]"
+            print(f"🔍 {cache_status} 寻找 {img_name} -> 区域: {sw}x{sh}, 模板: {tw}x{th}")
 
-        # 🌟 核心防崩溃护盾！如果裁剪后的画面比模板图还小，直接拦截
         if sh < th or sw < tw:
             print(f"❌ [ADB 拦截] 划定的区域(高{sh})比模板图(高{th})还小！已拦截崩溃。")
             return None
@@ -174,7 +177,6 @@ class AdbController:
 
         # 6. 判断置信度
         if max_val >= conf:
-            # 计算目标中心点坐标 (加上裁剪区域的偏移量)
             center_x = max_loc[0] + tw // 2 + offset_x
             center_y = max_loc[1] + th // 2 + offset_y
             return Point(center_x, center_y)
