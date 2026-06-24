@@ -45,3 +45,49 @@ SPEED_PROFILES = {
 
 # 🎯 在这里切换挡位！只需修改引号里的名字：'SLOW', 'NORMAL', 或 'FAST'
 CURRENT_GEAR = 'FAST'  
+
+
+# ==========================================
+# 🌐 国际化 (i18n) 多语言配置
+# ==========================================
+# 当前语言设置，可修改为 'en' 来切换英文
+CURRENT_LANG = 'zh'
+
+STRINGS = {
+    "zh": {
+        "app_title": "🚀 E7 全自动挂机助手 - v2.0 (ADB支持版)",
+        "ui_title": "E7 秘密商店挂机助手",
+        "run_mode": "运行模式:",
+        "mode_adb": "ADB 模拟器模式",
+        "mode_win": "Windows 桌面模式",
+        "adb_address": "ADB 地址:",
+        "speed_gear": "速度挡位:",
+        "btn_start": "▶ 开始挂机",
+        "btn_stop": "⏹ 停止挂机",
+        "log_ready": "=== 系统就绪 ===\n选择运行模式和挡位后，点击开始...\n\n",
+        "copyright": "© 2026 E7 Auto Script | Powered by CustomTkinter"
+    },
+    "en": {
+        "app_title": "🚀 E7 Auto Bot - v2.0 (ADB Supported)",
+        "ui_title": "E7 Secret Shop Auto Bot",
+        "run_mode": "Run Mode:",
+        "mode_adb": "ADB Emulator Mode",
+        "mode_win": "Windows Desktop Mode",
+        "adb_address": "ADB Address:",
+        "speed_gear": "Speed Gear:",
+        "btn_start": "▶ Start Bot",
+        "btn_stop": "⏹ Stop Bot",
+        "log_ready": "=== System Ready ===\nSelect mode and speed, then click Start...\n\n",
+        "copyright": "© 2026 E7 Auto Script | Powered by CustomTkinter"
+    }
+}
+
+def get_text(key):
+    """获取对应语言的文本，如果找不到则返回 key 本身"""
+    return STRINGS.get(CURRENT_LANG, STRINGS["zh"]).get(key, key)
+
+# 在 config.py 最下方追加这个函数：
+def set_lang(lang_code):
+    """动态设置当前语言"""
+    global CURRENT_LANG
+    CURRENT_LANG = lang_code

@@ -12,6 +12,9 @@ import customtkinter as ctk
 import pyautogui
 from pathlib import Path
 
+# 🌐 引入我们在 config.py 中写好的多语言小助手 (新增了 set_lang 和 STRINGS)
+from src.core.config import get_text as _, set_lang, STRINGS
+
 # 设置主题和样式
 ctk.set_appearance_mode("dark")      # 暗黑模式
 ctk.set_default_color_theme("blue")  # 蓝色主题
@@ -23,7 +26,7 @@ class E7DesktopApp(ctk.CTk):
         super().__init__()
         
         # ==================== 窗口初始化 ====================
-        self.title("🚀 E7 全自动挂机助手 - v2.0 (ADB支持版)")
+        self.title(_("app_title"))  # 🌍 使用多语言
         self.geometry("600x580")  # 稍微加高了一点点，以容纳新选项
         self.resizable(False, False)
         
@@ -48,9 +51,16 @@ class E7DesktopApp(ctk.CTk):
         title_frame = ctk.CTkFrame(self, fg_color="transparent")
         title_frame.pack(pady=10, padx=20, fill="x")
         
-        self.title_label = ctk.CTkLabel(title_frame, text="E7 秘密商店挂机助手", 
+        self.title_label = ctk.CTkLabel(title_frame, text=_("ui_title"),  # 🌍 使用多语言
                                         font=ctk.CTkFont(size=24, weight="bold"))
-        self.title_label.pack()
+        self.title_label.pack(side="left", padx=(120, 0)) # 稍微靠右一点居中，给右侧留出空间
+        
+        # 🌐 新增：语言切换下拉框
+        self.lang_var = ctk.StringVar(value="中文")
+        self.lang_menu = ctk.CTkOptionMenu(title_frame, values=["中文", "English"], 
+                                           variable=self.lang_var, width=80, height=28,
+                                           command=self._on_lang_change)
+        self.lang_menu.pack(side="right")
         
         # --- 2. 配置信息区 ---
         config_frame = ctk.CTkFrame(self, fg_color="#2B2B2B")
@@ -62,13 +72,13 @@ class E7DesktopApp(ctk.CTk):
         
         # --- 第一行：运行模式 ---
         self.mode_icon = ctk.CTkLabel(settings_frame, text="💻", font=ctk.CTkFont(size=14))
-        self.mode_icon.grid(row=0, column=0, padx=(15, 5), pady=8, sticky="e") # 图标靠右
+        self.mode_icon.grid(row=0, column=0, padx=(15, 5), pady=8, sticky="e") 
         
-        self.mode_label = ctk.CTkLabel(settings_frame, text="运行模式:", font=ctk.CTkFont(size=14))
-        self.mode_label.grid(row=0, column=1, padx=(0, 15), pady=8, sticky="w") # 文字靠左
+        self.mode_label = ctk.CTkLabel(settings_frame, text=_("run_mode"), font=ctk.CTkFont(size=14))  # 🌍
+        self.mode_label.grid(row=0, column=1, padx=(0, 15), pady=8, sticky="w") 
         
-        self.mode_var = ctk.StringVar(value="ADB 模拟器模式")
-        self.mode_menu = ctk.CTkOptionMenu(settings_frame, values=["ADB 模拟器模式", "Windows 桌面模式"], 
+        self.mode_var = ctk.StringVar(value=_("mode_adb"))  # 🌍
+        self.mode_menu = ctk.CTkOptionMenu(settings_frame, values=[_("mode_adb"), _("mode_win")],  # 🌍
                                            variable=self.mode_var, width=160, command=self._on_mode_change)
         self.mode_menu.grid(row=0, column=2, padx=(0, 10), pady=8, sticky="w")
 
@@ -76,7 +86,7 @@ class E7DesktopApp(ctk.CTk):
         self.adb_icon = ctk.CTkLabel(settings_frame, text="🔌", font=ctk.CTkFont(size=14))
         self.adb_icon.grid(row=1, column=0, padx=(15, 5), pady=8, sticky="e")
         
-        self.adb_label = ctk.CTkLabel(settings_frame, text="ADB 地址:", font=ctk.CTkFont(size=14))
+        self.adb_label = ctk.CTkLabel(settings_frame, text=_("adb_address"), font=ctk.CTkFont(size=14))  # 🌍
         self.adb_label.grid(row=1, column=1, padx=(0, 15), pady=8, sticky="w")
         
         self.adb_entry = ctk.CTkEntry(settings_frame, width=160)
@@ -87,7 +97,7 @@ class E7DesktopApp(ctk.CTk):
         self.gear_icon = ctk.CTkLabel(settings_frame, text="⚙️", font=ctk.CTkFont(size=14))
         self.gear_icon.grid(row=2, column=0, padx=(15, 5), pady=8, sticky="e")
         
-        self.gear_label = ctk.CTkLabel(settings_frame, text="速度挡位:", font=ctk.CTkFont(size=14))
+        self.gear_label = ctk.CTkLabel(settings_frame, text=_("speed_gear"), font=ctk.CTkFont(size=14))  # 🌍
         self.gear_label.grid(row=2, column=1, padx=(0, 15), pady=8, sticky="w")
         
         self.gear_var = ctk.StringVar(value="FAST")
@@ -99,12 +109,12 @@ class E7DesktopApp(ctk.CTk):
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=10, padx=20)
         
-        self.start_btn = ctk.CTkButton(btn_frame, text="▶ 开始挂机", command=self.start_task, 
+        self.start_btn = ctk.CTkButton(btn_frame, text=_("btn_start"), command=self.start_task,  # 🌍
                                        width=140, height=40, fg_color="#2ecc71", hover_color="#27ae60",
                                        font=ctk.CTkFont(weight="bold"))
         self.start_btn.grid(row=0, column=0, padx=15)
         
-        self.stop_btn = ctk.CTkButton(btn_frame, text="⏹ 停止挂机", command=self.stop_task, 
+        self.stop_btn = ctk.CTkButton(btn_frame, text=_("btn_stop"), command=self.stop_task,  # 🌍
                                       width=140, height=40, fg_color="#e74c3c", hover_color="#c0392b", 
                                       state="disabled", font=ctk.CTkFont(weight="bold"))
         self.stop_btn.grid(row=0, column=1, padx=15)
@@ -115,16 +125,42 @@ class E7DesktopApp(ctk.CTk):
         
         self.log_text = ctk.CTkTextbox(log_frame, width=540, height=160, font=ctk.CTkFont(size=12))
         self.log_text.pack(padx=10, pady=10)
-        self.log_text.insert("0.0", "=== 系统就绪 ===\n选择运行模式和挡位后，点击开始...\n\n")
+        self.log_text.insert("0.0", _("log_ready"))  # 🌍
         self.log_text.configure(state="disabled")
         
         # --- 5. 底部版权信息 ---
-        ctk.CTkLabel(self, text="© 2026 E7 Auto Script | Powered by CustomTkinter", 
-                     font=ctk.CTkFont(size=10), text_color="gray").pack(pady=5)
+        self.copyright_label = ctk.CTkLabel(self, text=_("copyright"),  # 🌍 存为变量以便刷新
+                                            font=ctk.CTkFont(size=10), text_color="gray")
+        self.copyright_label.pack(pady=5)
 
+    # ==================== 🌐 多语言核心逻辑 ====================
+    def _on_lang_change(self, choice):
+        """用户在下拉框选择语言时触发"""
+        lang_code = "en" if choice == "English" else "zh"
+        set_lang(lang_code)  # 告诉 config.py 切换语言
+        self._refresh_ui_texts() # 刷新界面文字
+
+    def _refresh_ui_texts(self):
+        """刷新界面上所有组件的文字"""
+        self.title(_("app_title"))
+        self.title_label.configure(text=_("ui_title"))
+        self.mode_label.configure(text=_("run_mode"))
+        self.adb_label.configure(text=_("adb_address"))
+        self.gear_label.configure(text=_("speed_gear"))
+        self.start_btn.configure(text=_("btn_start"))
+        self.stop_btn.configure(text=_("btn_stop"))
+        self.copyright_label.configure(text=_("copyright"))
+        
+        # 特殊处理：更新运行模式下拉框的选项，并保持当前选择的状态
+        current_mode_is_win = (self.mode_var.get() == STRINGS["zh"]["mode_win"] or 
+                               self.mode_var.get() == STRINGS["en"]["mode_win"])
+        self.mode_menu.configure(values=[_("mode_adb"), _("mode_win")])
+        self.mode_var.set(_("mode_win") if current_mode_is_win else _("mode_adb"))
+
+    # ==================== 业务逻辑 ====================
     def _on_mode_change(self, choice):
         """当运行模式改变时，动态显示或隐藏 ADB 地址输入框"""
-        if choice == "Windows 桌面模式":
+        if choice == _("mode_win"):  # 🌍 逻辑判断也同步使用多语言配置
             self.adb_icon.grid_remove()
             self.adb_label.grid_remove()
             self.adb_entry.grid_remove()
@@ -143,7 +179,7 @@ class E7DesktopApp(ctk.CTk):
         self.stop_btn.configure(state="normal")
         
         run_mode = self.mode_var.get()
-        if run_mode == "Windows 桌面模式":
+        if run_mode == _("mode_win"):  # 🌍
             self._log(">>> [Windows模式] 正在启动，请将鼠标移至模拟器区域...")
         else:
             self._log(f">>> [ADB模式] 正在连接设备 {self.adb_entry.get()}...")
@@ -180,7 +216,7 @@ class E7DesktopApp(ctk.CTk):
             self.after(0, self._log, f"已加载挡位: {speed_gear}")
             
             # ✅ 根据用户选择的模式，实例化不同的控制器
-            if run_mode == "Windows 桌面模式":
+            if run_mode == _("mode_win"):  # 🌍
                 from src.core.win_controller import WinController
                 device = WinController(current_speed, IMAGE_DIR)
             else:
