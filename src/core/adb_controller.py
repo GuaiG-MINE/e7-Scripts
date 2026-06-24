@@ -132,29 +132,44 @@ class AdbController:
     def find_image(self, img_name, conf=0.8, region=None, use_cache=False):
         """
         核心方法：截屏并使用 OpenCV 进行模板匹配
-        🌟 新增 use_cache 参数：如果为 True，且有缓存，就不再重新截图
+        🌟 已启用终极优化：去除 PNG 压缩，直接读取原生 RGBA 像素流！
         """
-        # 1. 如果不使用缓存，或者缓存为空，则重新执行耗时的截图
         if not use_cache or self._cached_screen is None:
-            screen_bytes = self._run_adb(['exec-out', 'screencap', '-p'], raw_output=True)
-            if not screen_bytes:
+            # 1. 🌟 核心修改：去掉 '-p'，直接获取原生未压缩数据！
+            screen_bytes = self._run_adb(['exec-out', 'screencap'], raw_output=True)
+            if not screen_bytes: 
                 return None
-            np_arr = np.frombuffer(screen_bytes, np.uint8)
-            self._cached_screen = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
-            if self._cached_screen is None:
+            
+            # 2. 解析原生数据头 (前 12 或 16 个字节包含宽、高信息)
+            width = int.from_bytes(screen_bytes[0:4], byteorder='little')
+            height = int.from_bytes(screen_bytes[4:8], byteorder='little')
+            
+            # 3. 计算像素数据真正的起始位置 (规避不同模拟器头部长度的差异)
+            # 每个像素由 RGBA 4个通道组成，所以总大小是 宽 * 高 * 4
+            expected_size = width * height * 4
+            offset = len(screen_bytes) - expected_size
+            
+            if offset < 0:
+                print(f"❌ [ADB] 原生截图数据解析失败！数据长度异常。")
                 return None
+                
+            # 4. 提取纯像素数据，并用 numpy 瞬间重组成图像矩阵
+            raw_pixels = screen_bytes[offset:]
+            img_np = np.frombuffer(raw_pixels, dtype=np.uint8)
+            img_rgba = img_np.reshape((height, width, 4))
+            
+            # 5. 转换为灰度图供 OpenCV 匹配，存入缓存
+            self._cached_screen = cv2.cvtColor(img_rgba, cv2.COLOR_RGBA2GRAY)
 
-        # 2. 🌟 核心：使用缓存的图像进行匹配
+        # ====== 下面的代码保持不变 ======
         screen_img = self._cached_screen.copy()
 
-        # 3. 如果指定了区域，则裁剪屏幕图像
         offset_x, offset_y = 0, 0
         if region:
             x, y, w, h = [int(v) for v in region]
             screen_img = screen_img[y:y+h, x:x+w]
             offset_x, offset_y = x, y
 
-        # 4. 获取模板图
         template = self._get_template(img_name)
         if template is None:
             return None 
@@ -162,20 +177,13 @@ class AdbController:
         th, tw = template.shape[:2]
         sh, sw = screen_img.shape[:2] 
 
-        # 🌟 日志稍微改一下，加上是否使用了缓存的提示
-        if region:
-            cache_status = "⚡[缓存]" if use_cache else "📸[新截图]"
-            print(f"🔍 {cache_status} 寻找 {img_name} -> 区域: {sw}x{sh}, 模板: {tw}x{th}")
-
         if sh < th or sw < tw:
             print(f"❌ [ADB 拦截] 划定的区域(高{sh})比模板图(高{th})还小！已拦截崩溃。")
             return None
 
-        # 5. 执行模板匹配
         result = cv2.matchTemplate(screen_img, template, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
-        # 6. 判断置信度
         if max_val >= conf:
             center_x = max_loc[0] + tw // 2 + offset_x
             center_y = max_loc[1] + th // 2 + offset_y
