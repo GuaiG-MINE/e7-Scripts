@@ -2,14 +2,19 @@
 # E7 Auto Script - 依赖库清单
 # ==========================================
 
-# 1. 桌面自动化核心 (鼠标键盘控制与基础屏幕截取)
+# 1. 桌面自动化核心 (Windows 鼠标键盘控制与基础屏幕截取)
 pyautogui
-pyscreeze      # 显式声明，防止 Python 3.14 漏装底层依赖
-Pillow         # 显式声明，防止 Python 3.14 漏装底层依赖
+pyscreeze      # 显式声明，防止 Python 新版本漏装底层依赖
+Pillow         # 显式声明，防止 Python 新版本漏装底层依赖
 
-# 2. 图像识别与矩阵运算 (用于高精度找图与 confidence 参数)
+# 2. 图像识别与矩阵运算 (Windows 模式的高精度找图 & ADB 模式的核心视觉)
 numpy
 opencv-python
 
 # 3. 现代化图形用户界面 (构建暗黑风格的桌面端 UI)
 customtkinter
+
+# 4. 项目打包与分发 (用于将脚本编译为独立的 exe 可执行文件)
+pyinstaller
+# 5. ADB 工具库 (用于与 Android 设备进行通信和控制)
+adbutils
