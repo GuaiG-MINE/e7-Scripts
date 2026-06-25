@@ -3,7 +3,7 @@
 """
 @File    : adb_controller.py
 @Author  : Guaig
-@Date    : 2026-06-24
+@Date    : 2026-06-25
 @Desc    : 基于 ADB 命令的设备控制器 (支持图片缓存与打包路径)
 """
 
@@ -44,6 +44,12 @@ class AdbController:
         # 测试 ADB 连接
         self._check_connection()
 
+    def clear_cache(self):
+        """清理内存缓存，释放资源"""
+        self.image_cache.clear()
+        self._cached_screen = None
+        log_manager.debug("🧹 已清空 ADB 图片及屏幕缓存")
+
     def _check_connection(self):
         """检查设备是否在线"""
         try:
@@ -57,8 +63,16 @@ class AdbController:
         """执行 ADB 命令的底层工具"""
         cmd = ['adb', '-s', self.serial] + cmd_args
         # 如果需要原始字节输出（比如截图），则不使用 text=True
-        result = subprocess.run(cmd, capture_output=True, text=not raw_output)
-        return result.stdout
+        try:
+            # 增加 try-except 拦截，防止 ADB 抽风导致脚本崩溃
+            result = subprocess.run(cmd, capture_output=True, text=not raw_output, check=True)
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            log_manager.error(f"❌ ADB 命令执行失败: {' '.join(cmd)}")
+            return b"" if raw_output else ""
+        except Exception as e:
+            log_manager.error(f"❌ ADB 发生未知异常: {e}")
+            return b"" if raw_output else ""
 
     def _get_template(self, img_name):
         """从缓存获取模板图，安全读取防崩溃"""
@@ -95,8 +109,11 @@ class AdbController:
         offset_x = random.randint(-8, 8)
         offset_y = random.randint(-8, 8)
         
-        final_x = int(x) + offset_x
-        final_y = int(y) + offset_y
+        screen_w, screen_h = self.get_screen_size()
+        
+        # 增加边界裁剪，防止偏移出屏幕导致报错
+        final_x = max(0, min(int(x) + offset_x, screen_w - 1))
+        final_y = max(0, min(int(y) + offset_y, screen_h - 1))
         
         self._run_adb(['shell', 'input', 'tap', str(final_x), str(final_y)])
         
@@ -129,6 +146,7 @@ class AdbController:
             time.sleep(self.speed['wait_after_swipe'])
             return True
         else:
+            # ❌ 没找到锚点，直接返回 False，让上层任务逻辑（ShopTask）去决定怎么处理异常
             log_manager.warning("⚠️ 警告：找不到刷新按钮锚点，无法滑动！请确认在商店界面并且画面无遮挡。")
             return False
 
@@ -141,6 +159,11 @@ class AdbController:
             # 1. 🌟 核心修改：去掉 '-p'，直接获取原生未压缩数据！
             screen_bytes = self._run_adb(['exec-out', 'screencap'], raw_output=True)
             if not screen_bytes: 
+                return None
+                
+            # 增加数据长度校验，防止 ADB 断开时报错
+            if len(screen_bytes) < 12:
+                log_manager.error("❌ [ADB] 截屏数据过短，跳过本次识别。")
                 return None
             
             # 2. 解析原生数据头 (前 12 或 16 个字节包含宽、高信息)
