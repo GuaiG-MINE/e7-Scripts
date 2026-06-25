@@ -51,13 +51,29 @@ class AdbController:
         log_manager.debug("🧹 已清空 ADB 图片及屏幕缓存")
 
     def _check_connection(self):
-        """检查设备是否在线"""
+        """检查设备是否在线，如果不在线则尝试自动连接"""
         try:
+            # 先查看当前已连接的设备列表
             result = subprocess.run(['adb', 'devices'], capture_output=True, text=True, check=True)
-            if self.serial not in result.stdout:
-                log_manager.warning(f"⚠️ 未在 adb devices 列表中找到设备 {self.serial}，请确保模拟器已开启并连接。")
+            
+            # 如果我们的模拟器不在列表里，或者状态是 offline
+            if self.serial not in result.stdout or 'offline' in result.stdout:
+                log_manager.warning(f"⚠️ 未检测到 {self.serial}，正在尝试自动连接...")
+                
+                # 执行 adb connect 命令
+                conn_result = subprocess.run(['adb', 'connect', self.serial], capture_output=True, text=True)
+                
+                # 检查连接结果
+                if "connected" in conn_result.stdout or "already connected" in conn_result.stdout:
+                    log_manager.info(f"✅ 成功连接到模拟器: {self.serial}")
+                else:
+                    log_manager.error(f"❌ 自动连接失败，ADB返回: {conn_result.stdout.strip()}")
+            else:
+                log_manager.info(f"✅ 模拟器 {self.serial} 已连接就绪。")
+                
         except Exception as e:
-            log_manager.error(f"❌ ADB 环境异常: {e}", exc_info=True)
+            log_manager.error(f"❌ ADB 环境异常，请确认是否已安装 ADB 并配置环境变量: {e}")
+
 
     def _run_adb(self, cmd_args, raw_output=False):
         """执行 ADB 命令的底层工具"""
