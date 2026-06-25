@@ -10,6 +10,9 @@
 import sys
 from pathlib import Path
 
+# 🌟 引入全局日志管理器
+from src.core.logger import log_manager
+
 # 确保项目根目录在 Python 模块搜索路径中
 # __file__ 是 main.py，.parent 直接就是项目根目录 (e7)
 BASE_DIR = Path(__file__).resolve().parent
@@ -27,10 +30,13 @@ def run_cli_mode():
     print("1. 自动刷秘密商店")
     print("2. 自动讨伐 (敬请期待)")
     
+    log_manager.info("用户启动了 CLI 命令行模式")
+    
     choice = input("👉 请输入要执行的功能序号 (直接回车默认选1): ")
     
     if choice == '' or choice == '1':
         print(f"\n>>> 初始化配置中... 当前挡位：【{CURRENT_GEAR}】")
+        log_manager.info(f"CLI模式初始化... 挡位: {CURRENT_GEAR}")
         
         # 🌟 优雅的路径拼接
         IMAGE_DIR = str(BASE_DIR / 'data' / 'images_win')
@@ -48,6 +54,7 @@ def run_cli_mode():
 def run_gui_mode():
     """全新的图形化界面模式"""
     print("正在启动 E7 挂机助手图形界面...")
+    log_manager.info("正在启动 E7 挂机助手 GUI 图形界面...")
     try:
         from src.ui.desktop_app.desktop_ui import E7DesktopApp
         app = E7DesktopApp()
@@ -56,6 +63,8 @@ def run_gui_mode():
         print(f"❌ 启动失败，缺少依赖库或路径错误: {e}")
         print("💡 请确认已激活虚拟环境，并执行: pip install -r requirements.txt")
         print("💡 临时回退到命令行模式，请运行: python main.py --cli")
+        # 🌟 把致命启动错误记录到文件
+        log_manager.error(f"GUI 启动失败，缺少依赖库: {e}", exc_info=True)
 
 def main():
     # 如果运行命令带了 --cli 参数，就走老逻辑

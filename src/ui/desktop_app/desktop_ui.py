@@ -14,6 +14,8 @@ from pathlib import Path
 
 # 🌐 引入我们在 config.py 中写好的多语言小助手
 from src.core.config import get_text as _, set_lang, STRINGS
+# 🌟 引入全局日志管理器
+from src.core.logger import log_manager
 
 # 设置主题和样式
 ctk.set_appearance_mode("dark")      # 暗黑模式
@@ -191,9 +193,13 @@ class E7DesktopApp(ctk.CTk):
         
         run_mode = self.mode_var.get()
         if run_mode == _("mode_win"):  
-            self._log(">>> [Windows模式] 正在启动，请将鼠标移至模拟器区域...")
+            msg = ">>> [Windows模式] 正在启动，请将鼠标移至模拟器区域..."
+            log_manager.info(msg)
+            self._log(msg)
         else:
-            self._log(f">>> [ADB模式] 正在连接设备 {self.adb_entry.get()}...")
+            msg = f">>> [ADB模式] 正在连接设备 {self.adb_entry.get()}..."
+            log_manager.info(msg)
+            self._log(msg)
         
         speed_gear = self.gear_var.get()
         adb_serial = self.adb_entry.get()
@@ -204,7 +210,11 @@ class E7DesktopApp(ctk.CTk):
     def stop_task(self):
         if not self.is_running: return
         self.is_running = False
-        self._log(">>> 收到停止指令！(正在等待当前操作完成...)")
+        
+        msg = ">>> 收到停止指令！(正在等待当前操作完成...)"
+        log_manager.info(msg)
+        self._log(msg)
+        
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
         
@@ -220,6 +230,7 @@ class E7DesktopApp(ctk.CTk):
             BASE_DIR = Path(__file__).resolve().parents[3]
             
             self.after(0, self._log, f"已加载挡位: {speed_gear}")
+            log_manager.info(f"任务启动，已加载速度挡位: {speed_gear}")
             
             if run_mode == _("mode_win"):  
                 IMAGE_DIR = str(BASE_DIR / 'data' / 'images_win')
@@ -233,7 +244,9 @@ class E7DesktopApp(ctk.CTk):
                         else:
                             current_speed[key] = max(0.1, value - 0.2)
                             
-                self.after(0, self._log, "⚡ 已应用 ADB 专属速度微调（保护动画完整性）！")
+                msg = "⚡ 已应用 ADB 专属速度微调（保护动画完整性）！"
+                self.after(0, self._log, msg)
+                log_manager.info(msg)
 
                 IMAGE_DIR = str(BASE_DIR / 'data' / 'images_adb')  
                 from src.core.adb_controller import AdbController
@@ -262,13 +275,18 @@ class E7DesktopApp(ctk.CTk):
                 f"🏅 神秘奖牌 (红): {red_count} 次\n"
                 "======================\n"
             )
+            log_manager.info(f"任务结束结算: 刷新 {refreshes} 次, 蓝 {blue_count} 次, 红 {red_count} 次")
             self.after(0, self._log, summary)
             self.after(0, self._log, "✅ 任务执行完毕或已手动停止。")
             
         except pyautogui.FailSafeException:
-            self.after(0, self._log, "🛑 已触发鼠标防爆死机制，任务已紧急停止！")
+            msg = "🛑 已触发鼠标防爆死机制，任务已紧急停止！"
+            log_manager.warning(msg)
+            self.after(0, self._log, msg)
         except Exception as e:
             error_msg = f"❌ 发生异常: {repr(e)}"
+            # 🌟 关键：exc_info=True 会把具体的报错行号和堆栈追踪写进文件里！
+            log_manager.error(error_msg, exc_info=True)
             self.after(0, self._log, error_msg)
         finally:
             self.is_running = False

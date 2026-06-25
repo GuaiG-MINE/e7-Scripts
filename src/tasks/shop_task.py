@@ -9,6 +9,7 @@
 
 import time
 from src.tasks.base_task import BaseTask
+from src.core.logger import log_manager  # 🌟 1. 引入我们刚刚写好的全局日志管理器
 
 class ShopTask(BaseTask):
     def __init__(self, device, speed_config, log_callback=None, stats_callback=None):
@@ -17,8 +18,21 @@ class ShopTask(BaseTask):
         self.log_callback = log_callback
         self.stats_callback = stats_callback 
 
+    # 🌟 2. 核心改写：让所有的日志既进文件，又上 UI
     def log(self, message, level="info"):
-        print(message)  
+        """统一日志输出出口"""
+        
+        # 根据 level 调用 logger 写入日志文件
+        if level == "debug":
+            log_manager.debug(message)
+        elif level == "warning":
+            log_manager.warning(message)
+        elif level == "error":
+            log_manager.error(message)
+        else:
+            log_manager.info(message)
+            
+        # 依然保留发给 GUI 界面的回调（不在 UI 显示 debug 信息，保持界面清爽）
         if self.log_callback and level != "debug":
             self.log_callback(message)
 
