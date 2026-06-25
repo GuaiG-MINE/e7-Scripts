@@ -14,6 +14,9 @@ import sys
 from pathlib import Path
 from PIL import Image  # 🌟 新增：用于将图片读取到内存
 
+# 🌟 引入全局日志管理器
+from src.core.logger import log_manager
+
 class WinController:
     def __init__(self, speed_config, image_dir):
         self.speed = speed_config
@@ -41,13 +44,13 @@ class WinController:
         if img_name not in self.image_cache:
             img_path = str(Path(self.image_dir) / img_name)
             if not os.path.exists(img_path): 
-                print(f"❌ 警告：图片文件不存在！路径为: {img_path}")
+                log_manager.error(f"❌ 警告：图片文件不存在！路径为: {img_path}")
                 return None
             try:
                 # 使用 PIL 将图片读入内存并存入缓存
                 self.image_cache[img_name] = Image.open(img_path)
             except Exception as e:
-                print(f"❌ 无法读取图片 {img_path}: {repr(e)}")
+                log_manager.error(f"❌ 无法读取图片 {img_path}: {repr(e)}", exc_info=True)
                 return None
                 
         # 🌟 2. 直接从缓存中获取图片对象
@@ -59,12 +62,11 @@ class WinController:
                 return pyautogui.locateCenterOnScreen(cached_img, confidence=conf, region=region)
             return pyautogui.locateCenterOnScreen(cached_img, confidence=conf)
         except pyautogui.ImageNotFoundException:
-            # 找不到图是正常现象，不需要打印报错，保持安静即可（或者你想打印也可以放开）
-            # print(f"⚠️ 没找到图片: {img_name} (conf={conf})")
+            # 找不到图是正常现象，不需要打印报错，保持安静即可
             return None
         except Exception as e: 
-            # 🌟 真正的异常，用 repr(e) 把错误类型带上
-            print(f"❌ 崩溃啦！处理图片 {img_name} 时发生内部错误: {repr(e)}")
+            # 🌟 真正的异常，用 exc_info=True 把错误堆栈带上
+            log_manager.error(f"❌ 崩溃啦！处理图片 {img_name} 时发生内部错误: {repr(e)}", exc_info=True)
             return None
 
     def click(self, x, y):
@@ -89,7 +91,7 @@ class WinController:
             return True
         else:
             # ❌ 没找到锚点
-            print("⚠️ 警告：找不到刷新按钮锚点，无法滑动！请确认在商店界面并且画面无遮挡。")
+            log_manager.warning("⚠️ 警告：找不到刷新按钮锚点，无法滑动！请确认在商店界面并且画面无遮挡。")
             return False
         
     def get_screen_size(self):
