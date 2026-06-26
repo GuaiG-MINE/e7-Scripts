@@ -56,13 +56,13 @@ class ShopTask(BaseTask):
             is_adb = self.device.is_adb
             if is_adb:
                 _, screen_h = self.device.get_screen_size()
-                # buy_btn 本身高 66px，搜索高度 ~90px 刚好包住+余量，不跨行
-                offset_y = max(30, int(screen_h * 0.03))
-                safe_height_limit = max(80, int(screen_h * 0.08))
+                # 🌟 修复1：放宽顶部偏移，从 0.03 改为 0.05，防止切掉按钮上边缘
+                offset_y = max(50, int(screen_h * 0.05))
+                # 🌟 修复2：放宽整体高度，从 0.08 改为 0.14，给足上下冗余，但依然不会跨行
+                safe_height_limit = max(130, int(screen_h * 0.14))
             else:
-                # buy_btn 本身高 62px
-                offset_y = 25
-                safe_height_limit = 90
+                offset_y = 40
+                safe_height_limit = 120
                 
             screen_w, screen_h = self.device.get_screen_size()
             top_y = max(0, int(icon_center.y - offset_y))
@@ -72,13 +72,13 @@ class ShopTask(BaseTask):
             
             search_region = (left_x, top_y, safe_width, safe_height)
 
-            buy_center = self.device.find_image('buy_btn.png', conf=0.9, region=search_region, use_cache=True)
+            # 🌟 修复3：将 conf 从 0.9 稍微降到 0.85，防止背景纹理干扰
+            buy_center = self.device.find_image('buy_btn.png', conf=0.85, region=search_region, use_cache=True)
             
             if buy_center:
                 self.device.click(buy_center.x, buy_center.y)
                 
                 confirm_img = 'confirm_buy_blue.png' if "blue" in icon_img_name else 'confirm_buy_red.png'
-                # 🌟 使用动态等待
                 confirm_center = self.wait_for_image(confirm_img, timeout=2.5)
                 
                 if confirm_center:
