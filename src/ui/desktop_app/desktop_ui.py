@@ -37,6 +37,9 @@ class E7DesktopApp(ctk.CTk):
         y = (self.winfo_screenheight() // 2) - 300
         self.geometry(f"+{x}+{y}")
         
+        # 🌟 新增：用于缓存当前的战绩字符串后缀，防止停止时被清空
+        self.current_stats_str = ""
+        
         self.runner = GameRunner(
             log_cb=lambda msg: self.after(0, self._log, msg),
             shop_stats_cb=self.update_shop_stats_ui,
@@ -155,10 +158,13 @@ class E7DesktopApp(ctk.CTk):
 
     # ==================== UI 状态更新与回调 ====================
     def update_shop_stats_ui(self, blue, red, refresh):
-        text = f"运行状态: 刷店中   |   🔖 誓约书签: {blue}    🏅 神秘奖牌: {red}    🔄 刷新次数: {refresh}"
+        # 🌟 核心修改：将战绩部分分离出来缓存
+        self.current_stats_str = f"   |   🔖 誓约书签: {blue}    🏅 神秘奖牌: {red}    🔄 刷新次数: {refresh}"
+        text = f"运行状态: 刷店中{self.current_stats_str}"
         self.after(0, lambda: self.stats_label.configure(text=text))
         
     def update_general_stats_ui(self, text):
+        self.current_stats_str = ""
         self.after(0, lambda: self.stats_label.configure(text=f"运行状态: {text}"))
 
     def _log(self, message):
@@ -170,7 +176,8 @@ class E7DesktopApp(ctk.CTk):
     def _on_task_finish(self):
         self.after(0, lambda: self.start_btn.configure(state="normal"))
         self.after(0, lambda: self.stop_btn.configure(state="disabled"))
-        self.after(0, lambda: self.stats_label.configure(text="任务已停止"))
+        # 🌟 核心修改：停止时拼接缓存的战绩字符串
+        self.after(0, lambda: self.stats_label.configure(text=f"任务已停止{self.current_stats_str}"))
         self.after(0, lambda: self.stats_bar.configure(fg_color="#475569")) # 停止时变灰
 
     # ==================== 交互事件 ====================
@@ -232,7 +239,7 @@ class E7DesktopApp(ctk.CTk):
         log_manager.info(msg); self._log(msg)
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
-        self.stats_label.configure(text="正在停止...")
+        self.stats_label.configure(text=f"正在停止...{self.current_stats_str}")
         self.stats_bar.configure(fg_color=BTN_STOP) # 停止中变红
         self.runner.stop()
 

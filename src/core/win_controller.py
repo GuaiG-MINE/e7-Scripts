@@ -12,61 +12,88 @@ import time
 import os
 import sys
 from pathlib import Path
-from PIL import Image  # 🌟 新增：用于将图片读取到内存
+from PIL import Image
 
-# 🌟 引入全局日志管理器
 from src.core.logger import log_manager
 
+# 模拟 ADB 模式的 Point 对象，保持上层接口完全一致
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
 class WinController:
+    # ✅ 标识设备类型，供 ShopTask 安全判断
+    is_adb = False
+
     def __init__(self, speed_config, image_dir):
         self.speed = speed_config
         
-        # 🌟 核心修改：PyInstaller 路径拦截与兼容逻辑
+        # 🌟 PyInstaller 路径拦截与兼容逻辑
         if hasattr(sys, '_MEIPASS'):
-            # 如果是打包后的 exe 运行，强制将图片目录指向系统临时解压目录
             self.image_dir = os.path.join(sys._MEIPASS, 'data', 'images_win')
         else:
-            # 如果是平时在 VS Code 里开发运行，保持原样
             self.image_dir = image_dir
             
-        # 🌟 性能优化：创建图片内存缓存池
         self.image_cache = {}
+        self._cached_screen = None  # 🌟 新增：用于保存全屏截图的缓存
             
-        # 开启防爆死机制：鼠标移到屏幕四角自动停止脚本
         pyautogui.FAILSAFE = True
-        # 设置全局操作停顿时间
         pyautogui.PAUSE = self.speed['global_pause']
 
+    def clear_cache(self):
+        """清理内存缓存，释放资源"""
+        self.image_cache.clear()
+        self._cached_screen = None
+        log_manager.debug("🧹 已清空 Win 图片及屏幕缓存")
+
     def find_image(self, img_name, conf=0.8, region=None, use_cache=False):
-        """🛡️ 安全查找图片接口 (带内存缓存优化)"""
-        
-        # 🌟 1. 如果缓存里没有，才去硬盘读
+        """🌟 移除了 sticky，并真正实现了 use_cache 逻辑"""
+        # --- 1. 模板图缓存 ---
         if img_name not in self.image_cache:
             img_path = str(Path(self.image_dir) / img_name)
-            if not os.path.exists(img_path): 
+            if not os.path.exists(img_path):
                 log_manager.error(f"❌ 警告：图片文件不存在！路径为: {img_path}")
                 return None
             try:
-                # 使用 PIL 将图片读入内存并存入缓存
                 self.image_cache[img_name] = Image.open(img_path)
             except Exception as e:
-                log_manager.error(f"❌ 无法读取图片 {img_path}: {repr(e)}", exc_info=True)
+                log_manager.error(f"❌ 无法读取图片 {img_path}: {repr(e)}")
                 return None
-                
-        # 🌟 2. 直接从缓存中获取图片对象
-        cached_img = self.image_cache[img_name]
+
+        needle = self.image_cache[img_name]
 
         try:
-            # pyautogui 支持直接传入 Image 对象，省去了重复读硬盘的时间！
-            if region: 
-                return pyautogui.locateCenterOnScreen(cached_img, confidence=conf, region=region)
-            return pyautogui.locateCenterOnScreen(cached_img, confidence=conf)
+            # --- 2. 屏幕画面真缓存逻辑 ---
+            if not use_cache or self._cached_screen is None:
+                self._cached_screen = pyautogui.screenshot()
+            
+            haystack = self._cached_screen
+
+            # --- 3. 区域裁剪与匹配 ---
+            if region:
+                x, y, w, h = [int(v) for v in region]
+                # 裁剪目标区域
+                haystack = haystack.crop((x, y, x + w, y + h))
+                
+                # 在裁剪后的图片中寻找
+                box = pyautogui.locate(needle, haystack, confidence=conf)
+                if box:
+                    center = pyautogui.center(box)
+                    # 换算回全屏绝对坐标
+                    return Point(center.x + x, center.y + y)
+                return None
+            else:
+                box = pyautogui.locate(needle, haystack, confidence=conf)
+                if box:
+                    center = pyautogui.center(box)
+                    return Point(center.x, center.y)
+                return None
+                
         except pyautogui.ImageNotFoundException:
-            # 找不到图是正常现象，不需要打印报错，保持安静即可
             return None
-        except Exception as e: 
-            # 🌟 真正的异常，用 exc_info=True 把错误堆栈带上
-            log_manager.error(f"❌ 崩溃啦！处理图片 {img_name} 时发生内部错误: {repr(e)}", exc_info=True)
+        except Exception as e:
+            log_manager.error(f"❌ 处理图片 {img_name} 时发生内部错误: {repr(e)}")
             return None
 
     def click(self, x, y):
@@ -74,24 +101,20 @@ class WinController:
         pyautogui.click(x, y, duration=self.speed['click_move'])
 
     def swipe_up(self):
-        """鼠标拖拽模拟向上滑动屏幕接口 (🌟 宽屏适配 & 大幅度滑动版)"""
-        # 寻找商店界面固定存在的“刷新按钮”作为坐标系原点
-        anchor = self.find_image('refresh_btn.png', conf=0.75)
+        """鼠标拖拽模拟向上滑动屏幕接口"""
+        anchor = self.find_image('refresh_btn.png', conf=0.75, use_cache=False)
         
         if anchor:
-            # 🌟 1. 宽屏修正：X轴往右偏移 700
             start_x = anchor.x + 700
-            # 🌟 2. Y轴起点修正：从 -150 改为 -50
             start_y = anchor.y - 50
             
             pyautogui.moveTo(start_x, start_y)
-            # 🌟 3. 滑动幅度修正：将向上滑动的距离从 250 加大到 400
             pyautogui.dragTo(start_x, start_y - 400, duration=self.speed['swipe_drag'], button='left')
             time.sleep(self.speed['wait_after_swipe'])
+            
+            self._cached_screen = None # 🌟 滑动后画面改变，清空缓存
             return True
         else:
-            # ❌ 没找到锚点
-            log_manager.warning("⚠️ 警告：找不到刷新按钮锚点，无法滑动！请确认在商店界面并且画面无遮挡。")
             return False
         
     def get_screen_size(self):
