@@ -110,10 +110,16 @@ class ShopTask(BaseTask):
             self.device.click(confirm_center.x, confirm_center.y)
             self.stats['refresh'] += 1
             self._notify_stats_update()
-            time.sleep(self.speed['wait_refresh_done'])
+            
+            # 🌟 核心修复：强制等待刷新动画落地！
+            # 即使在 FAST 挡位下，也强制保证至少有 0.8 秒的时间让列表从下往上滑完并完全静止。
+            # 防止下一轮瞬间截图截到“运动残影”，导致坐标计算偏下而空点。
+            actual_wait = max(0.8, self.speed.get('wait_refresh_done', 0.5))
+            time.sleep(actual_wait)
+            
             return True
         else:
-            time.sleep(self.speed['wait_cancel'])
+            time.sleep(self.speed.get('wait_cancel', 1.0))
             return False
 
     def _check_shop_present(self):
