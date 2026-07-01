@@ -12,11 +12,13 @@ from src.tasks.base_task import BaseTask
 from src.core.logger import log_manager 
 
 class ShopTask(BaseTask):
-    def __init__(self, device, speed_config, log_callback=None, stats_callback=None):
+    # 🌟 修复: 增加 max_refreshes 参数
+    def __init__(self, device, speed_config, log_callback=None, stats_callback=None, max_refreshes=200):
         super().__init__(device, speed_config)        
         self.stats = {'blue': 0, 'red': 0, 'refresh': 0}
         self.log_callback = log_callback
         self.stats_callback = stats_callback 
+        self.max_refreshes = max_refreshes  # 🌟 保存最大刷新次数
 
     def log(self, message, level="info"):
         """统一日志输出出口"""
@@ -32,7 +34,6 @@ class ShopTask(BaseTask):
         if self.stats_callback:
             self.stats_callback(self.stats['blue'], self.stats['red'], self.stats['refresh'])
 
-    # 🌟 保留：动态等待工具，极速响应弹窗
     def wait_for_image(self, img_name, timeout=3.0, conf=0.8):
         """动态等待：不断截图寻找目标，找到了立刻返回，超时才放弃"""
         start_time = time.time()
@@ -56,9 +57,7 @@ class ShopTask(BaseTask):
             is_adb = self.device.is_adb
             if is_adb:
                 _, screen_h = self.device.get_screen_size()
-                # 🌟 修复1：放宽顶部偏移，从 0.03 改为 0.05，防止切掉按钮上边缘
                 offset_y = max(50, int(screen_h * 0.05))
-                # 🌟 修复2：放宽整体高度，从 0.08 改为 0.14，给足上下冗余，但依然不会跨行
                 safe_height_limit = max(130, int(screen_h * 0.14))
             else:
                 offset_y = 40
@@ -72,7 +71,6 @@ class ShopTask(BaseTask):
             
             search_region = (left_x, top_y, safe_width, safe_height)
 
-            # 🌟 修复3：将 conf 从 0.9 稍微降到 0.85，防止背景纹理干扰
             buy_center = self.device.find_image('buy_btn.png', conf=0.85, region=search_region, use_cache=True)
             
             if buy_center:
@@ -104,16 +102,12 @@ class ShopTask(BaseTask):
             
         self.device.click(refresh_center.x, refresh_center.y)
         
-        # 🌟 使用动态等待
         confirm_center = self.wait_for_image('confirm_refresh_btn.png', timeout=2.5, conf=0.85)
         if confirm_center:
             self.device.click(confirm_center.x, confirm_center.y)
             self.stats['refresh'] += 1
             self._notify_stats_update()
             
-            # 🌟 核心修复：强制等待刷新动画落地！
-            # 即使在 FAST 挡位下，也强制保证至少有 0.8 秒的时间让列表从下往上滑完并完全静止。
-            # 防止下一轮瞬间截图截到“运动残影”，导致坐标计算偏下而空点。
             actual_wait = max(0.8, self.speed.get('wait_refresh_done', 0.5))
             time.sleep(actual_wait)
             
@@ -136,7 +130,6 @@ class ShopTask(BaseTask):
         """任务主循环"""
         self.log("⏳ 请在 3 秒内确保画面停留在【秘密商店】...")
         
-        # 🌟 保留：终极防爆死装甲
         try:
             for _ in range(3):
                 if not self._running: return
@@ -149,9 +142,9 @@ class ShopTask(BaseTask):
             
             loop_count = 1
             consecutive_swipe_fails = 0  
-            max_refreshes = 2000 
 
-            while self._running and self.stats['refresh'] < max_refreshes:
+            # 🌟 修复: 循环判断条件改为 self.max_refreshes
+            while self._running and self.stats['refresh'] < self.max_refreshes:
                 self.log(f"\n--- 第 {loop_count} 次巡逻 ---", level="debug")
                 
                 blue_bought = False
@@ -246,8 +239,9 @@ class ShopTask(BaseTask):
                     if not self._running: break
                     time.sleep(0.1)
                     
-            if self.stats['refresh'] >= max_refreshes:
-                self.log(f"🛑 达到最大安全刷新次数 ({max_refreshes})，任务自动停止防爆死。")
+            # 🌟 修复: 结束提示改为 self.max_refreshes
+            if self.stats['refresh'] >= self.max_refreshes:
+                self.log(f"🛑 达到设定的最大刷新次数 ({self.max_refreshes}次)，任务自动停止，保护资源。")
                 
         except Exception as e:
             error_msg = f"❌ 任务发生致命崩溃: {str(e)}"

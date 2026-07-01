@@ -30,14 +30,15 @@ class GameRunner:
         self.current_task = None
         self.base_dir = Path(__file__).resolve().parents[2]
 
-    def start(self, is_adb_mode, speed_gear, adb_serial, selected_task):
+    # 🌟 修复: 增加 max_refreshes 参数
+    def start(self, is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes=200):
         if self.is_running: return
         self.is_running = True
         
         # 启动后台守护线程，防止阻塞 UI
         threading.Thread(
             target=self._run_thread, 
-            args=(is_adb_mode, speed_gear, adb_serial, selected_task), 
+            args=(is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes), # 🌟 传入参数
             daemon=True
         ).start()
 
@@ -46,7 +47,8 @@ class GameRunner:
         if self.current_task:
             self.current_task.stop()
 
-    def _run_thread(self, is_adb_mode, speed_gear, adb_serial, selected_task):
+    # 🌟 修复: 增加 max_refreshes 参数
+    def _run_thread(self, is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes):
         try:
             current_speed = SPEED_PROFILES[speed_gear].copy()
             self.log_cb(f"已加载挡位: {speed_gear}")
@@ -77,7 +79,8 @@ class GameRunner:
                     device=device, 
                     speed_config=current_speed, 
                     log_callback=self.log_cb,
-                    stats_callback=self.shop_stats_cb
+                    stats_callback=self.shop_stats_cb,
+                    max_refreshes=max_refreshes # 🌟 将次数传给任务
                 )
                 self.current_task.run()
                 
