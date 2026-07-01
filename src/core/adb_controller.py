@@ -4,7 +4,7 @@
 @File    : adb_controller.py
 @Author  : Guaig
 @Date    : 2026-06-25
-@Desc    : 基于 ADB 命令的设备控制器 (支持图片缓存与打包路径)
+@Desc    : 基于 ADB 命令的设备控制器 (支持图片缓存)
 """
 
 import sys
@@ -32,12 +32,8 @@ class AdbController:
         self.speed = speed_profile
         self._cached_screen = None
         
-        # 1. 处理 PyInstaller 打包后的资源路径
-        if getattr(sys, 'frozen', False):
-            base_path = Path(sys._MEIPASS)
-            self.image_dir = base_path / 'data' / 'images_adb'
-        else:
-            self.image_dir = Path(image_dir)
+        # 🌟 核心清理：彻底解耦！直接使用 Runner 传来的绝对路径，不再关心是否打包
+        self.image_dir = Path(image_dir)
             
         # 2. 图片内存缓存字典
         self.image_cache = {}
@@ -54,11 +50,11 @@ class AdbController:
     def _check_connection(self):
         """检查设备是否在线，如果不在线则尝试自动连接"""
         try:
-            # 🌟 修复: 增加 encoding='utf-8', errors='ignore' 防止 Windows GBK 解码报错
-            result = subprocess.run(['adb', 'devices'], capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
+            # 🌟 修复：增加 creationflags=subprocess.CREATE_NO_WINDOW 隐藏黑框
+            result = subprocess.run(['adb', 'devices'], capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, creationflags=subprocess.CREATE_NO_WINDOW)
             if self.serial not in result.stdout or 'offline' in result.stdout:
                 log_manager.warning(f"⚠️ 未检测到 {self.serial}，正在尝试自动连接...")
-                conn_result = subprocess.run(['adb', 'connect', self.serial], capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                conn_result = subprocess.run(['adb', 'connect', self.serial], capture_output=True, text=True, encoding='utf-8', errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
                 if "connected" in conn_result.stdout or "already connected" in conn_result.stdout:
                     log_manager.info(f"✅ 成功连接到模拟器: {self.serial}")
                 else:
@@ -73,11 +69,11 @@ class AdbController:
         cmd = ['adb', '-s', self.serial] + cmd_args
         try:
             if raw_output:
-                # 截图时返回原生字节流，不需要 text=True 和编码
-                result = subprocess.run(cmd, capture_output=True, check=True)
+                # 🌟 修复：增加 creationflags=subprocess.CREATE_NO_WINDOW 隐藏黑框
+                result = subprocess.run(cmd, capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
             else:
-                # 🌟 修复: 增加 encoding='utf-8', errors='ignore' 防止文本输出报错
-                result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
+                # 🌟 修复：增加 creationflags=subprocess.CREATE_NO_WINDOW 隐藏黑框
+                result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, creationflags=subprocess.CREATE_NO_WINDOW)
             return result.stdout
         except subprocess.CalledProcessError as e:
             log_manager.error(f"❌ ADB 命令执行失败: {' '.join(cmd)}")
@@ -145,7 +141,7 @@ class AdbController:
         return False
 
     def find_image(self, img_name, conf=0.8, region=None, use_cache=False):
-        """核心方法：截屏并使用 OpenCV 进行模板匹配 (已彻底移除 sticky)"""
+        """核心方法：截屏并使用 OpenCV 进行模板匹配"""
         if not use_cache or self._cached_screen is None:
             screen_bytes = self._run_adb(['exec-out', 'screencap'], raw_output=True)
             if not screen_bytes or len(screen_bytes) < 12: 

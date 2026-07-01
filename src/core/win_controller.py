@@ -29,11 +29,8 @@ class WinController:
     def __init__(self, speed_config, image_dir):
         self.speed = speed_config
         
-        # 🌟 PyInstaller 路径拦截与兼容逻辑
-        if hasattr(sys, '_MEIPASS'):
-            self.image_dir = os.path.join(sys._MEIPASS, 'data', 'images_win')
-        else:
-            self.image_dir = image_dir
+        # 🌟 核心清理：彻底解耦！直接使用 Runner 传来的绝对路径，不再关心是否打包
+        self.image_dir = image_dir
             
         self.image_cache = {}
         self._cached_screen = None  # 🌟 新增：用于保存全屏截图的缓存

@@ -7,6 +7,7 @@
 @Desc    : 游戏任务调度引擎，负责设备初始化与后台线程管理
 """
 
+import sys  # 🌟 新增导入 sys
 import threading
 import pyautogui
 from pathlib import Path
@@ -28,9 +29,15 @@ class GameRunner:
         
         self.is_running = False
         self.current_task = None
-        self.base_dir = Path(__file__).resolve().parents[2]
+        
+        # 🌟 核心修复：完美兼容 PyInstaller 打包环境与开发环境
+        if hasattr(sys, '_MEIPASS'):
+            # 如果是打包后的 exe，资源会被释放到这个临时目录
+            self.base_dir = Path(sys._MEIPASS)
+        else:
+            # 如果是平时跑代码，就是当前文件往上两级的根目录
+            self.base_dir = Path(__file__).resolve().parents[2]
 
-    # 🌟 修复: 增加 max_refreshes 参数
     def start(self, is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes=200):
         if self.is_running: return
         self.is_running = True
@@ -38,7 +45,7 @@ class GameRunner:
         # 启动后台守护线程，防止阻塞 UI
         threading.Thread(
             target=self._run_thread, 
-            args=(is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes), # 🌟 传入参数
+            args=(is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes),
             daemon=True
         ).start()
 
@@ -47,7 +54,6 @@ class GameRunner:
         if self.current_task:
             self.current_task.stop()
 
-    # 🌟 修复: 增加 max_refreshes 参数
     def _run_thread(self, is_adb_mode, speed_gear, adb_serial, selected_task, max_refreshes):
         try:
             current_speed = SPEED_PROFILES[speed_gear].copy()
@@ -80,7 +86,7 @@ class GameRunner:
                     speed_config=current_speed, 
                     log_callback=self.log_cb,
                     stats_callback=self.shop_stats_cb,
-                    max_refreshes=max_refreshes # 🌟 将次数传给任务
+                    max_refreshes=max_refreshes
                 )
                 self.current_task.run()
                 
